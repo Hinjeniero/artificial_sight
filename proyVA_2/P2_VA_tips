@@ -1,0 +1,42 @@
+//Transformacion de pixel
+tabla lut de relacion entre valores origen y valores transformados
+Funcion opencv lut
+Grafica de tramos rectos entre puntos elegidos. (Saldrán floats, pero se ponen ints/chars igual)
+
+//Umbralizacion
+Funcion opencv threshold() (maxval -> 255); threshold type, documentation in opencv page, in threshold() function, el primero ces-binary
+
+//Ecualizacion, easy
+FUncion opencv equalization.
+
+//Suavizado Gaussiano
+Funcion opencv gaussianBlur(), ksize = tamaño kernel, en nuestro caso cuadrado. sigmaY = 0, sigmaX = la que nosotros queramos.
+Bordertype = el border asumido por opencv, para devolver una imagen del mismo tamaño (al ser las amscaras de 3x3, y los bordes no tienen
+los bastantes tdatos blablabla)
+Guassian width introducido por usuario
+
+//Filtro mediana 
+Funcion opencv medianBlur(), ksize 3x3 de serie
+
+//Filtro lineal
+Usuario puede modificar kernel o mascara. 
+Los negativos tienen problemas, no se pueden representar visualmente. Por eso permitimos al usuario añadir un valor.
+Opencv tiene esto implementado. Funcion filter2D(). ddepth = -1, opencv asi asume que tiene que darle la misma profundidad al destino.
+Kernel puede ser un mat, un matx.
+anchor = punto de anclaje (ancla), punto que queremos modificar. de serie -1, -1, el centro.
+
+//Dilatacion
+ELemento estructural x defecto es cuadrado, y kernel 3x3. 
+Funcion opencv dilate(). Si pasamos mat vacio, asume un cuadrado 3x3
+
+//Erosion
+Funcion opencv erode(). Practicamente lo mismo que lo anterior.
+
+Inicio, clase que herede de la de dialogos y la .ui nueva. En ejemplo, PixelTDIalog es nombre de ejemplo
+
+//Acceso
+Mat m;
+fila -> f ; columna -> c;
+v = m.at<tipo>(f, c);
+(uchar)->CV_8UC1
+(float)->CV_32FC1

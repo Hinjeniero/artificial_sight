@@ -128,7 +128,6 @@ void MainWindow::load_from_file(){
           "Image files (*.jpg *.jpeg *.bmp *.png) ;; All files (*.*)");
     if(!imagepath.isNull()){
         qDebug() << "selected file path: " << imagepath.toUtf8();
-
         if (capture){
             ui->captureButton->setChecked(false);
             capture = false;
@@ -147,16 +146,17 @@ void MainWindow::load_from_file(){
 
 void MainWindow::save_to_file(){
     ui->saveButton->setText("Saving file");
-    QString fileName = QFileDialog::getSaveFileName(this, "Save image",
+    QString imagepath = QFileDialog::getSaveFileName(this, "Save image",
                                QDir::currentPath(),
                                "Images (*.png *.xpm *.jpg *.jpeg *.bmp)");
-    if(showColorImage){
-        imwrite(fileName.toUtf8().constData(), destColorImage);
-        return;
+    if(!imagepath.isNull()){
+        qDebug() << "Saving to " << imagepath.toUtf8();
+        if(showColorImage)
+            imwrite(imagepath.toUtf8().constData(), destColorImage);
+        else
+            imwrite(imagepath.toUtf8().constData(), destGrayImage);
     }
-    imwrite(fileName.toUtf8().constData(), destGrayImage);
-    ui->saveButton->setText("Save to file"); //TODO crashing when closing unexpectedly
-}
+    ui->saveButton->setText("Save to file");
 
 void MainWindow::copy_image(){
     if (!winSelected){

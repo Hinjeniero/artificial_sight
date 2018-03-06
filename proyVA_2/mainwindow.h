@@ -53,6 +53,14 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
+    void transformPixel();
+    void thresholding();
+    void equalize();
+    void gaussianBlur();
+    void medianBlur();
+    void linearFilter();
+    void dilate();
+    void erode();
     ~MainWindow();
 
 private:
@@ -73,19 +81,13 @@ private:
     std::vector<int> lut_grays;
 
 public slots:
+    void fill_lut_table();
     void compute();
     void start_stop_capture(bool start);
     void change_color_gray(bool color);
 
-    void transformPixel();
-    void thresholding();
-    void equalize();
-    void guassianBlur();
-    void medianBlur();
-    void linearFilter();
-    void dilate();
-    void erode();
-
+    void load_from_file();
+    void save_to_file();
     void openPixelDialog();
     void closePixelDialog();
     void openOrderDialog();
