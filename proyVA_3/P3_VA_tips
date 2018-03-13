@@ -1,0 +1,51 @@
+puntos orb imagen
+almacenar ademas de imagen sus puntos caracteristicos
+lo que is esdescriptivo son los descriptores de los puntos caracteristicos, hay que calcularlos para comparar
+imagen nueva
+	comparamos puntos descriptores
+	los clasificamos segun pertenecientes a que imagen
+	calculamos el menor rectangul ortogonal que contiene los putnos correspondientes a un objeto, y lo marcamos como objeto 'x
+resuelto en opencv
+	detectar puntos caracteristicos
+	calcular sus descriptores
+	comparar sus descriptores
+para rectangul ortogonal
+resuelto en opencv
+	boundingRect(lista puntos)
+	return Rect
+detec -> std::vector
+	mask -> 1 y 0s, mat para decir que puntos contamos y cuales no. Nosotros detectamos todos
+keypoint
+	Point2f nos interesa, centro de imagen.
+	resto no los vamos a usar.
+compute
+	para cada kpoint, lista de descriptores
+como matching, correspondencias?
+brute force, BFMatcher
+	NORM_L2 -> distancia euclidea por defecto ->shift or surf, pero no bueno.
+	Necesitamos hamming -> NORM_HAMMING
+	ALgo razonable es 50, a partir de ahi consideramos que los descriptores no se parecen, o no se acepta la correspondencia.
+	crossCheck -> Si correspondencia es consistente en ambos sentidos. False. (Si true mucho mas costoso)
+	Usar create en lugar de constructor. (COMO EN OBR)
+compararemos una imagen con unas cuantas -> coleccion
+	para ello, add(), lista de descriptores que van a formar la coleccion.
+	una vez creadas las imagenes de descriptores, creamos la coleccion (lista de mats)
+Para comparar con la coleccion match -> trainDescriptors es para comparar parejas, ese no nos isrve, entre corchetes
+Tenemos imagen origen ->
+	Calculo piuntos caracteristicos
+	Calculo imagen de descriptores a partir de esos keypoints
+	y esos son los queryDescriptors.
+El metodo match devuelve una lista de correspondencias, de emparejamientos. (descriptores)
+devuelve en matches, DMatch
+	queryIdx -> Indice de keypoint en la imagen origen comparada
+	trainIdx -> Indice del otro punto(keypoint), el de la coleccion. No nos interesa
+	imageIdx -> Indica a que objeto de la colección pertenece. Indice de la lista de obnjetos de la coleccion.
+	distance -> distancia hamming -> numero de bits que difieren entre los dos descriptores.
+knnMatch -> No lo vamos a usar. Pertenece a imagen 1 e imagen 2 (la misma).
+radiusMatch -> Busca en entorno limitado, ya que en el siguiente frame los objetos no deberian haberse movido mucho.
+
+Cada vez que usuario añada o elimine objeto, limpiamos coleccion y la ponemos en orden.
+drawText
+RCDraw
+ 
+No añadir imagenes seleccionadas por el usuario cuando no haya nada seleccionado, o cuando sea una zona homogenea
