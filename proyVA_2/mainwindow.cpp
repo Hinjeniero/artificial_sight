@@ -92,9 +92,6 @@ void MainWindow::fill_lut_table()
 
 void MainWindow::compute()
 {
-//    qDebug() << "guassWidthBox " << ui->gaussWidthBox->value();
-//    qDebug() << "thresholdSpinBox " << ui->thresholdSpinBox->value();
-
     if(capture && cap->isOpened())
     {
         *cap >> colorImage;
@@ -125,35 +122,7 @@ void MainWindow::compute()
     }
     visorS->update();
     visorD->update();
-
-    switch(ui->operationComboBox->currentIndex()){
-        case 0: //Transform pixel
-            transformPixel();
-            break;
-        case 1: //Thresholding
-            thresholding();
-            break;
-        case 2: //Equalize
-            equalize();
-            break;
-        case 3: //Guassian Blur
-            gaussianBlur();
-            break;
-        case 4: //Median Blur
-            medianBlur();
-            break;
-        case 5: //Linear filter
-            linearFilter();
-            break;
-        case 6: //Dilate
-            dilate();
-            break;
-        case 7: //Erode
-            erode();
-            break;
-        case 8: //Apply several (Can't process this in the switch)
-            break;
-    }
+    applyOperation(ui->operationComboBox->currentIndex());
 }
 
 void MainWindow::start_stop_capture(bool start)
@@ -222,30 +191,16 @@ void MainWindow::save_to_file(){
 }
 
 void MainWindow::transformPixel(){
-//    qDebug() << pixelTDialog.origPixelBox1->value();
-//    qDebug() << pixelTDialog.origPixelBox2->value();
-//    qDebug() << pixelTDialog.origPixelBox3->value();
-//    qDebug() << pixelTDialog.origPixelBox4->value();
-//    qDebug() << pixelTDialog.newPixelBox1->value();
-//    qDebug() << pixelTDialog.newPixelBox2->value();
-//    qDebug() << pixelTDialog.newPixelBox3->value();
-//    qDebug() << pixelTDialog.newPixelBox4->value();
     for (int i=0; i<MAX_HEIGHT; i++){
         for (int j=0; j<MAX_WIDTH; j++){
             destGrayImage.at<uchar>(i, j) = (uchar)lut_grays[grayImage.at<uchar>(i, j)];
         }
     }
-//    uchar v = grayImage.at<uchar>(0,0);
-//    qDebug() << v;
-//    Mat m;
-//    fila -> f ; columna -> c;
-//    v = m.at<tipo>(f, c);
-//    (uchar)->CV_8UC1;
-//    (float)->CV_32FC1;
 }
 
 void MainWindow::thresholding(){
     threshold(grayImage, destGrayImage, ui->thresholdSpinBox->value(), 255, THRESH_BINARY);
+    threshold(colorImage, destColorImage, ui->thresholdSpinBox->value(), 255, THRESH_BINARY);
 }
 
 void MainWindow::equalize(){
@@ -254,8 +209,8 @@ void MainWindow::equalize(){
 
 void MainWindow::gaussianBlur(){
     cv::Size2i size (0,0);
-    GaussianBlur(grayImage, destGrayImage, size, (double)ui->gaussWidthBox->value());
-    GaussianBlur(colorImage, destColorImage, size, (double)ui->gaussWidthBox->value());
+    GaussianBlur(grayImage, destGrayImage, size, (double)ui->gaussWidthBox->value()/5);
+    GaussianBlur(colorImage, destColorImage, size, (double)ui->gaussWidthBox->value()/5);
 }
 
 void MainWindow::medianBlur(){
@@ -264,16 +219,19 @@ void MainWindow::medianBlur(){
 }
 
 void MainWindow::linearFilter(){
-    lFilterDialog.kernelBox11->value();
-    lFilterDialog.kernelBox12->value();
-    lFilterDialog.kernelBox13->value();
-    lFilterDialog.kernelBox21->value();
-    lFilterDialog.kernelBox22->value();
-    lFilterDialog.kernelBox23->value();
-    lFilterDialog.kernelBox31->value();
-    lFilterDialog.kernelBox32->value();
-    lFilterDialog.kernelBox33->value();
-
+    Mat kernel;
+    kernel.create(3, 3, CV_32FC1);
+    kernel.at<float>(0,0) = lFilterDialog.kernelBox11->value();
+    kernel.at<float>(0,1) = lFilterDialog.kernelBox12->value();
+    kernel.at<float>(0,2) = lFilterDialog.kernelBox13->value();
+    kernel.at<float>(1,0) = lFilterDialog.kernelBox21->value();
+    kernel.at<float>(1,1) = lFilterDialog.kernelBox22->value();
+    kernel.at<float>(1,2) = lFilterDialog.kernelBox23->value();
+    kernel.at<float>(2,0) = lFilterDialog.kernelBox31->value();
+    kernel.at<float>(2,1) = lFilterDialog.kernelBox32->value();
+    kernel.at<float>(2,2) = lFilterDialog.kernelBox33->value();
+    cv::filter2D(grayImage, destGrayImage, -1, kernel, Point(-1, -1), lFilterDialog.addedVBox->value());
+    cv::filter2D(colorImage, destColorImage, -1, kernel, Point(-1, -1), lFilterDialog.addedVBox->value());
 }
 
 void MainWindow::dilate(){
@@ -288,6 +246,55 @@ void MainWindow::erode(){
     threshold(grayImage, destGray2ColorImage, ui->thresholdSpinBox->value(), 255, THRESH_BINARY);
     cv::erode(destGray2ColorImage, destGrayImage, element);
     cv::erode(colorImage, destColorImage, element);
+}
+
+void MainWindow::severalFilters(){
+    if(operOrderDialog.firstOperCheckBox->isChecked())
+        applyOperation(operOrderDialog.operationComboBox1->currentIndex());
+        destGrayImage.copyTo(grayImage);
+        destColorImage.copyTo(colorImage);
+    if(operOrderDialog.secondOperCheckBox->isChecked())
+        applyOperation(operOrderDialog.operationComboBox2->currentIndex());
+        destGrayImage.copyTo(grayImage);
+        destColorImage.copyTo(colorImage);
+    if(operOrderDialog.thirdOperCheckBox->isChecked())
+        applyOperation(operOrderDialog.operationComboBox3->currentIndex());
+        destGrayImage.copyTo(grayImage);
+        destColorImage.copyTo(colorImage);
+    if(operOrderDialog.fourthOperCheckBox->isChecked())
+        applyOperation(operOrderDialog.operationComboBox4->currentIndex());
+}
+
+void MainWindow::applyOperation(int opIndex){
+    switch(opIndex){
+        case 0: //Transform pixel
+            transformPixel();
+            break;
+        case 1: //Thresholding
+            thresholding();
+            break;
+        case 2: //Equalize
+            equalize();
+            break;
+        case 3: //Guassian Blur
+            gaussianBlur();
+            break;
+        case 4: //Median Blur
+            medianBlur();
+            break;
+        case 5: //Linear filter
+            linearFilter();
+            break;
+        case 6: //Dilate
+            dilate();
+            break;
+        case 7: //Erode
+            erode();
+            break;
+        case 8: //Apply several
+            severalFilters();
+            break;
+    }
 }
 
 void MainWindow::openPixelDialog(){

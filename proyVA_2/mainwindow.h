@@ -61,6 +61,8 @@ public:
     void linearFilter();
     void dilate();
     void erode();
+    void severalFilters();
+    void applyOperation(int opIndex);
     ~MainWindow();
 
 private:
