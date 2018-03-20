@@ -249,6 +249,9 @@ void MainWindow::erode(){
 }
 
 void MainWindow::severalFilters(){
+    Mat originalGray, originalColor;
+    grayImage.copyTo(originalGray);
+    colorImage.copyTo(originalColor);
     if(operOrderDialog.firstOperCheckBox->isChecked())
         applyOperation(operOrderDialog.operationComboBox1->currentIndex());
         destGrayImage.copyTo(grayImage);
@@ -263,6 +266,8 @@ void MainWindow::severalFilters(){
         destColorImage.copyTo(colorImage);
     if(operOrderDialog.fourthOperCheckBox->isChecked())
         applyOperation(operOrderDialog.operationComboBox4->currentIndex());
+    originalGray.copyTo(grayImage);
+    originalColor.copyTo(colorImage);
 }
 
 void MainWindow::applyOperation(int opIndex){

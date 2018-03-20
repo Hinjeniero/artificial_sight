@@ -56,6 +56,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::compute()
 {
+    if (ui->objectComboBox->currentIndex() == -1){ //CURRENT INDEX IS -1 WHEN EMPTY
+        ui->delButton->setEnabled(false);
+    }
 
     if(capture && cap->isOpened())
     {
@@ -84,6 +87,7 @@ void MainWindow::compute()
     if(winSelected)
     {
         visorS->drawSquare(QPointF(imageWindow.x+imageWindow.width/2, imageWindow.y+imageWindow.height/2), imageWindow.width,imageWindow.height, Qt::green );
+
     }
     visorS->update();
     visorD->update();
@@ -118,14 +122,31 @@ void MainWindow::change_color_gray(bool color)
     }
 }
 
-
 void MainWindow::add_to_collection(){
     qDebug("add collection");
+    Mat aux = grayImage(Rect(imageWindow.x,imageWindow.y,imageWindow.width,imageWindow.height));
 
+    cv::Ptr<cv::ORB> ULTRADETECTOR = cv::ORB::create();
+    std::vector <cv::KeyPoint> keypoints;
+    Mat descriptors;
+
+    ULTRADETECTOR->detect(aux, keypoints);
+    ULTRADETECTOR->compute(aux, keypoints, descriptors);
+    //qDebug() << descriptors.cols << "-" <<descriptors.rows;
+
+    std::vector <cv::Mat> element;
+    element.push_back(aux); //ONLY PUSHING THE REFERENCE
+    element.push_back(descriptors); //ONLY PUSHING THE REFERENCE
+    collection.addElement(element);
+
+    QString name = "Object "+ QString::number(collection.size());
+    ui->objectComboBox->addItem(name);
+    ui->delButton->setEnabled(true); //In case the combobox was empty before
 }
 
 void MainWindow::delete_from_collection(){
     qDebug("delete from collection");
+    qDebug() << "Deleting object with index " << ui->objectComboBox->currentIndex();
 }
 
 
@@ -150,12 +171,15 @@ void MainWindow::selectWindow(QPointF p, int w, int h)
         imageWindow.height = pEnd.y()-imageWindow.y;
 
         winSelected = true;
+        ui->addButton->setEnabled(true);
+
     }
 }
 
 void MainWindow::deselectWindow()
 {
     winSelected = false;
+    ui->addButton->setEnabled(false);
 }
 
 

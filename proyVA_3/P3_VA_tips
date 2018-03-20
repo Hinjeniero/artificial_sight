@@ -49,3 +49,9 @@ drawText
 RCDraw
  
 No añadir imagenes seleccionadas por el usuario cuando no haya nada seleccionado, o cuando sea una zona homogenea
+
+
+CREAR COLECCION
+vector 3 elementos,
+segundo nivel de std::vector, que contiene dos mats, el de la imagen, y el de los descriptores
+Para guardar descriptores no hace falta guardar keypoints

@@ -47,9 +47,24 @@ private:
     Rect imageWindow;
 
     struct MatList{
-        std::vector<cv::Mat> col;
-        bool isEmpty = True;
-    }MatList;
+        std::vector<std::vector<cv::Mat>> mlist; //Second lvl vector, first element is image, second one descriptors
+        bool isEmpty = true;
+        void addElement(std::vector<cv::Mat> element){
+            if (isEmpty)
+                isEmpty = false;
+            mlist.push_back(element);
+        }
+
+        void delElement(int indexElement){
+            mlist.erase(mlist.begin()+indexElement);
+            if (mlist.size() <= 0)
+                isEmpty = true;
+        }
+
+        int size(){
+            return mlist.size();
+        }
+    };
     typedef struct MatList MatList;
 
     MatList collection;
