@@ -32,6 +32,11 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
+    bool detect_frame(cv::Mat descriptors);
+    void detect_objects();
+    void train_matcher();
+    void save_collection();
+    void load_collection();
     ~MainWindow();
 
 private:
@@ -45,29 +50,60 @@ private:
     Mat gray2ColorImage, destGray2ColorImage;
     bool capture, showColorImage, winSelected;
     Rect imageWindow;
+    cv::Ptr<cv::ORB> ULTRADETECTOR = cv::ORB::create();
+    cv::Ptr<cv::BFMatcher> ULTRAMATCHER = cv::BFMatcher::create(NORM_HAMMING);
 
-    struct MatList{
-        std::vector<std::vector<cv::Mat>> mlist; //Second lvl vector, first element is image, second one descriptors
+    struct ObjectList{
+        std::vector<std::vector<cv::Mat>> mlist; //Second lvl vector, vector of images
+        std::vector<std::vector<cv::Mat>> dlist; //descriptors list
         bool isEmpty = true;
-        void addElement(std::vector<cv::Mat> element){
+
+        void addNewElement(cv::Mat elementImage, cv::Mat elementDescriptors){
             if (isEmpty)
                 isEmpty = false;
-            mlist.push_back(element);
+            std::vector<cv::Mat> aux;
+            aux.push_back(elementImage);
+            mlist.push_back(aux);
+            dlist.push_back(elementDescriptors);
         }
 
-        void delElement(int indexElement){
-            mlist.erase(mlist.begin()+indexElement);
+        void addImageToElement(int indexElement, cv::Mat image){
+            mlist[indexElement].push_back(image);
+        }
+
+        void addDescriptorsToElement(int indexElement, cv::Mat descriptors){
+            dlist[indexElement].push_back(descriptors);
+        }
+
+        void delImageFromElement(int indexElement, int indexImage){
+            mlist.erase(mlist.begin()+indexElement);//TODO delete only image
             if (mlist.size() <= 0)
                 isEmpty = true;
+        }
+
+        cv::Mat getImageFromElement(int indexElement, int indexImage){
+            return mlist[indexElement][indexImage];
         }
 
         int size(){
             return mlist.size();
         }
-    };
-    typedef struct MatList MatList;
 
-    MatList collection;
+        int elementSize(int indexElement){
+            return mlist[indexElement].size();
+        }
+
+        std::vector<std::vector<cv::Mat>> get_object_list(){
+            return mlist;
+        }
+
+        std::vector<std::vector<cv::Mat>> get_descriptors_list(){
+            return dlist;
+        }
+    };
+    typedef struct ObjectList ObjectList;
+
+    ObjectList collection;
 
 public slots:
     void compute();

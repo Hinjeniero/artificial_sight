@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
+    ui->horizontalSlider->setTickPosition(QSlider::TicksBothSides);
     cap = new VideoCapture(0);
     if(!cap->isOpened())
         cap = new VideoCapture(1);
@@ -39,8 +39,6 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(visorS,SIGNAL(windowSelected(QPointF, int, int)),this,SLOT(selectWindow(QPointF, int, int)));
     connect(visorS,SIGNAL(pressEvent()),this,SLOT(deselectWindow()));
     timer.start(60);
-
-
 }
 
 MainWindow::~MainWindow()
@@ -58,6 +56,13 @@ void MainWindow::compute()
 {
     if (ui->objectComboBox->currentIndex() == -1){ //CURRENT INDEX IS -1 WHEN EMPTY
         ui->delButton->setEnabled(false);
+        ui->horizontalSlider->setEnabled(false);
+    }else{
+        detect_objects();
+        ui->delButton->setEnabled(true);
+        ui->horizontalSlider->setEnabled(true);
+        ui->horizontalSlider->setMaximum(collection.elementSize(ui->objectComboBox->currentIndex()));
+        collection.getImageFromElement(ui->objectComboBox->currentIndex(), ui->horizontalSlider->value()).copyTo(destGrayImage);
     }
 
     if(capture && cap->isOpened())
@@ -68,7 +73,6 @@ void MainWindow::compute()
         cvtColor(colorImage, colorImage, CV_BGR2RGB);
 
     }
-
 
     if(showColorImage)
     {
@@ -124,24 +128,29 @@ void MainWindow::change_color_gray(bool color)
 
 void MainWindow::add_to_collection(){
     qDebug("add collection");
-    Mat aux = grayImage(Rect(imageWindow.x,imageWindow.y,imageWindow.width,imageWindow.height));
+    Mat selected_rect = grayImage(Rect(imageWindow.x,imageWindow.y,imageWindow.width,imageWindow.height));
 
-    cv::Ptr<cv::ORB> ULTRADETECTOR = cv::ORB::create();
     std::vector <cv::KeyPoint> keypoints;
     Mat descriptors;
+    ULTRADETECTOR->detect(selected_rect, keypoints); //Getting keypoints of the frame
+    ULTRADETECTOR->compute(selected_rect, keypoints, descriptors); //Getting descriptors of the keypoints
 
-    ULTRADETECTOR->detect(aux, keypoints);
-    ULTRADETECTOR->compute(aux, keypoints, descriptors);
-    //qDebug() << descriptors.cols << "-" <<descriptors.rows;
-
-    std::vector <cv::Mat> element;
-    element.push_back(aux); //ONLY PUSHING THE REFERENCE
-    element.push_back(descriptors); //ONLY PUSHING THE REFERENCE
-    collection.addElement(element);
+    if(!detect_frame(descriptors))//If it already exists in the collection
+        collection.addNewElement(selected_rect, descriptors);//Adding to the collection
+    else
+        collection.addImageToElement(ui->objectComboBox->currentIndex(), selected_rect);
+        collection.addDescriptorsToElement(ui->objectComboBox->currentIndex(), descriptors);
+    train_matcher();
 
     QString name = "Object "+ QString::number(collection.size());
     ui->objectComboBox->addItem(name);
-    ui->delButton->setEnabled(true); //In case the combobox was empty before
+}
+
+void MainWindow::train_matcher(){
+    ULTRAMATCHER->clear();
+    for (auto descriptors_vector: collection.get_descriptors_list()){ //For each vector of desceriptors
+        ULTRAMATCHER->add(descriptors_vector); //Training the matcher with each descriptor that the image has
+    }
 }
 
 void MainWindow::delete_from_collection(){
@@ -149,6 +158,31 @@ void MainWindow::delete_from_collection(){
     qDebug() << "Deleting object with index " << ui->objectComboBox->currentIndex();
 }
 
+/*
+ * Detects if the selected object exists already
+ */
+bool MainWindow::detect_frame(cv::Mat descriptors){
+    return true;
+}
+
+void MainWindow::detect_objects(){
+    std::vector <cv::KeyPoint> keypoints;
+    Mat descriptors;
+    ULTRADETECTOR->detect(grayImage, keypoints); //Getting keypoints of the actual frame
+    ULTRADETECTOR->compute(grayImage, keypoints, descriptors); //Getting descriptors of the keypoints
+
+    std::vector<DMatch> matches;
+    ULTRAMATCHER->match(descriptors, matches);
+
+}
+
+void MainWindow::save_collection(){
+    qDebug("Huehuehue");
+}
+
+void MainWindow::load_collection(){
+    qDebug("Huehuehuheu");
+}
 
 void MainWindow::selectWindow(QPointF p, int w, int h)
 {
