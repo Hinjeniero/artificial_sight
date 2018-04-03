@@ -76,9 +76,12 @@ private:
         }
 
         void delImageFromElement(int indexElement, int indexImage){
-            mlist.erase(mlist.begin()+indexElement);//TODO delete only image
-            if (mlist.size() <= 0)
-                isEmpty = true;
+            mlist[indexElement].erase(mlist[indexElement].begin()+indexImage);
+            if (mlist[indexElement].size() <= 0){//If the object contains no more images
+                mlist.erase(mlist.begin()+indexElement); //We delete the object
+                if (mlist.size() <= 0) //IF the collection has no more objects
+                    isEmpty = true;
+            }
         }
 
         cv::Mat getImageFromElement(int indexElement, int indexImage){
