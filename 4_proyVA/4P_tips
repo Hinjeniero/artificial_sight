@@ -1,0 +1,13 @@
+cada region tiene una lista de atributos.
+Si no, atributo de -1 para decir que no hahy region asociada.
+
+imgReg
+Vamos recorriendo. SI pixel -1, se convierte en nueva region y lo vamos extendiendo
+Método analisisRegion es solo de una region. Debe ser llamado por otro.
+
+Una vez imagen segmentada, podemos visualizar. Para ello, vamos a generar a partir de esta, la imagen
+resultante de la segmentacion. Asignamos a cada pixel un nivel de gris,e l de su region. (Uno de los atributos de la list ade regiones)
+Identificador de region es indice de la lista de regioes (con sus atributos).
+
+CV_32SC1, tipo de imgReg (La imgen de regiones intermedia entre gryaimage y destgrayimage)
+m.at<>(y-fila, x-columna)

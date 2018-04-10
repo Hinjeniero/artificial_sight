@@ -32,6 +32,7 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
+    void show_object_image();
     bool detect_frame(cv::Mat descriptors);
     void detect_objects();
     void train_matcher();
@@ -61,10 +62,12 @@ private:
         void addNewElement(cv::Mat elementImage, cv::Mat elementDescriptors){
             if (isEmpty)
                 isEmpty = false;
-            std::vector<cv::Mat> aux;
-            aux.push_back(elementImage);
-            mlist.push_back(aux);
-            dlist.push_back(elementDescriptors);
+            std::vector<cv::Mat> aux_image;
+            std::vector<cv::Mat> aux_desc;
+            aux_image.push_back(elementImage);
+            mlist.push_back(aux_image);
+            aux_desc.push_back(elementDescriptors);
+            dlist.push_back(aux_desc);
         }
 
         void addImageToElement(int indexElement, cv::Mat image){

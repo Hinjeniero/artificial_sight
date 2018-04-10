@@ -4,6 +4,8 @@
 
 #define MAX_WIDTH 320
 #define MAX_HEIGHT 240
+#define MAX_DISTANCE 50
+RNG rng(12345);
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -54,17 +56,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::compute()
 {
-    if (ui->objectComboBox->currentIndex() == -1){ //CURRENT INDEX IS -1 WHEN EMPTY
-        ui->delButton->setEnabled(false);
-        ui->horizontalSlider->setEnabled(false);
-    }else{
-        detect_objects();
-        ui->delButton->setEnabled(true);
-        ui->horizontalSlider->setEnabled(true);
-        ui->horizontalSlider->setMaximum(collection.elementSize(ui->objectComboBox->currentIndex()));
-        collection.getImageFromElement(ui->objectComboBox->currentIndex(), ui->horizontalSlider->value()).copyTo(destGrayImage);
-    }
-
     if(capture && cap->isOpened())
     {
         *cap >> colorImage;
@@ -72,6 +63,17 @@ void MainWindow::compute()
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         cvtColor(colorImage, colorImage, CV_BGR2RGB);
 
+    }
+
+    if (ui->objectComboBox->currentIndex() == -1){ //CURRENT INDEX IS -1 WHEN EMPTY
+        ui->delButton->setEnabled(false);
+        ui->horizontalSlider->setEnabled(false);
+    }else{
+        detect_objects();
+        ui->delButton->setEnabled(true);
+        ui->horizontalSlider->setEnabled(true);
+        ui->horizontalSlider->setMaximum(collection.elementSize(ui->objectComboBox->currentIndex())-1);
+        show_object_image();
     }
 
     if(showColorImage)
@@ -126,29 +128,38 @@ void MainWindow::change_color_gray(bool color)
     }
 }
 
+void MainWindow::show_object_image(){
+    //To make everything black again
+    destGrayImage = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, CV_8UC1);
+    Mat image = collection.getImageFromElement(ui->objectComboBox->currentIndex(), ui->horizontalSlider->value());
+
+    Rect Roi((MAX_WIDTH-image.cols)/2, (MAX_HEIGHT-image.rows)/2, image.cols, image.rows);
+    image.copyTo(destGrayImage(Roi));
+}
+
 void MainWindow::add_to_collection(){
     qDebug("add collection");
     Mat selected_rect = grayImage(Rect(imageWindow.x,imageWindow.y,imageWindow.width,imageWindow.height));
-
     std::vector <cv::KeyPoint> keypoints;
-    Mat descriptors;
+    Mat image, descriptors;
     ULTRADETECTOR->detect(selected_rect, keypoints); //Getting keypoints of the frame
     ULTRADETECTOR->compute(selected_rect, keypoints, descriptors); //Getting descriptors of the keypoints
+    selected_rect.copyTo(image);
 
     if(!detect_frame(descriptors))//If it already exists in the collection
-        collection.addNewElement(selected_rect, descriptors);//Adding to the collection
-    else
+        collection.addNewElement(image, descriptors);//Adding to the collection
+    else{
         collection.addImageToElement(ui->objectComboBox->currentIndex(), selected_rect);
         collection.addDescriptorsToElement(ui->objectComboBox->currentIndex(), descriptors);
+    }
     train_matcher();
-
     QString name = "Object "+ QString::number(collection.size());
     ui->objectComboBox->addItem(name);
 }
 
 void MainWindow::train_matcher(){
     ULTRAMATCHER->clear();
-    for (auto descriptors_vector: collection.get_descriptors_list()){ //For each vector of desceriptors
+    for (auto descriptors_vector: collection.get_descriptors_list()){ //For each vector of descriptors
         ULTRAMATCHER->add(descriptors_vector); //Training the matcher with each descriptor that the image has
     }
 }
@@ -162,7 +173,7 @@ void MainWindow::delete_from_collection(){
  * Detects if the selected object exists already
  */
 bool MainWindow::detect_frame(cv::Mat descriptors){
-    return true;
+    return false;//Do the same as down there, but only with the rectangle.
 }
 
 void MainWindow::detect_objects(){
@@ -170,10 +181,31 @@ void MainWindow::detect_objects(){
     Mat descriptors;
     ULTRADETECTOR->detect(grayImage, keypoints); //Getting keypoints of the actual frame
     ULTRADETECTOR->compute(grayImage, keypoints, descriptors); //Getting descriptors of the keypoints
+    std::vector<cv::DMatch> matches;
+    std::map<int, std::vector<int>> objectIdx;
 
-    std::vector<DMatch> matches;
     ULTRAMATCHER->match(descriptors, matches);
 
+    for (auto dmatch: matches){
+        if (dmatch.distance < MAX_DISTANCE)
+            objectIdx[dmatch.imgIdx].push_back(dmatch.queryIdx);
+    }
+    for (auto object: objectIdx){
+        if (object.second.size() > 5){ //If more than 5 matches in this object
+            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+            std::vector<cv::Point2f> points;
+            for (auto point: object.second){
+                points.push_back(keypoints[point].pt);
+                cv::drawMarker(grayImage, points.back(), color, MARKER_TILTED_CROSS, 5);
+                cv::drawMarker(colorImage, points.back(), color, MARKER_TILTED_CROSS, 5);
+            }
+            cv::Rect rect = cv::boundingRect(points);
+            cv::rectangle(grayImage, rect, color);
+            cv::rectangle(colorImage, rect, color);
+            cv::putText(grayImage, "object "+std::to_string(object.first+1),(rect.br()+rect.tl())*0.5, FONT_HERSHEY_SIMPLEX, 0.5, color);
+            cv::putText(colorImage, "object "+std::to_string(object.first+1),(rect.br()+rect.tl())*0.5, FONT_HERSHEY_SIMPLEX, 0.5, color);
+        }
+    }
 }
 
 void MainWindow::save_collection(){
