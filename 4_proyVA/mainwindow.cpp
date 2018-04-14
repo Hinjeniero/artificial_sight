@@ -119,37 +119,39 @@ void MainWindow::change_color_gray(bool color)
 void MainWindow::analyzeAllRegions(){
     Mat analyzed_pixels;
     Mat imgReg;
+    std::map<int, Region> allRegions;
+
     imgReg.create(MAX_HEIGHT, MAX_WIDTH, CV_32SC1);
-    analyzed_pixels = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, uchar);
+    analyzed_pixels = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, CV_8UC1);
 
     int i, j;
-    for (i=0; i<MAX_HEIGHT; i++){ //This is the imgRegions filled with -1's
-        for (j=0; j<MAX_WIDTH; j++){//Not loop the image, but the imgRegions
-            if (analyzedPixels.at<CV_8SC1>(i, j) != 0)
-                analyzeRegion(Point(i, j), imgReg, analyzed_pixels);
+    for (i=0; i<imgReg.rows; i++){ //This is the imgRegions filled with -1's
+        for (j=0; j<imgReg.cols; j++){
+            //Add to regions, check if analyzed
+            img
+            analyzeRegion(Point(i, j), imgReg, analyzed_pixels);
         }
     }
 }
 
-void MainWindow::analyzeRegion(Point pStart, Mat imgReg, Mat &analyzed){
+void MainWindow::analyzeRegion(Point pStart, Mat &imgReg, Region region, Mat &analyzed){
     std::vector<Point> list;
-    Point currentP, newP;
-    bool sameRegion = true;
+    Point currentP;
     int i = 0;
     list.push_back(pStart);
     while (i < list.size()){
         currentP = list[i];
-        if (currentP.x >= 0 && currentP.x < MAX_WIDTH && currentP.y >= 0 && currentP.y < MAX_HEIGHT){
-            //Generate region if different
-            //Stop adding neighbours when its another region
-            sameRegion = true; //This will be established according to the difference of gray
-            if (sameRegion){
-                list.add(Point(currentP.x-1, currentP.y-1));
-                list.add(Point(currentP.x-1, currentP.y+1));
-                list.add(Point(currentP.x+1, currentP.y+1));
-                list.add(Point(currentP.x+1, currentP.y-1));
+        if (analyzed.at<CV_8UC1>(currentP.x, currentP.y) == 0){ //If it hasn't been analyzed yet
+            if (currentP.x >= 0 && currentP.x < MAX_WIDTH && currentP.y >= 0 && currentP.y < MAX_HEIGHT){
+                if ((image.at<CV_8UC3>(pStart.x, pStart.y)-image.at<CV_8UC3>(currentP.x, currentP.y))< ui->grayDifferenceBox->value()){
+                    region.incrementCount();
+                    list.add(Point(currentP.x-1, currentP.y-1));
+                    list.add(Point(currentP.x-1, currentP.y+1));
+                    list.add(Point(currentP.x+1, currentP.y+1));
+                    list.add(Point(currentP.x+1, currentP.y-1));
+                    analyzed.at<CV_8SC1>(i, j) = 1; //We mark it as analyzed
+                }
             }
-            analyzed.at<uchar>(i, j) = 1;
         }
         i++;
     }

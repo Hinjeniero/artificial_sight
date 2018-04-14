@@ -1,11 +1,24 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QFileDialog>
+#include <dirent.h>
 
 #define MAX_WIDTH 320
 #define MAX_HEIGHT 240
-#define MAX_DISTANCE 50
-RNG rng(12345);
+#define MAX_DISTANCE 50 //Distance between saved descriptors and current descriptors
+#define NUMBER_ELEMENTS 3 //Number of objects in the list
+#define CROSSHAIR_SIZE 5 //Size of rectangles on the coincident keypoints
+
+inline std::vector<QColor> rndColors(){
+    std::vector<QColor> colors;
+    float currentHue = 0.0;
+    for (int i = 0; i < NUMBER_ELEMENTS; i++){
+        colors.push_back(QColor::fromHslF(currentHue, 1.0, 0.5) );
+        currentHue += 0.618033988749895f;
+        currentHue = std::fmod(currentHue, 1.0f);
+    }
+    return colors;
+}
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -13,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->horizontalSlider->setTickPosition(QSlider::TicksBothSides);
-    cap = new VideoCapture(0);
+    cap = new VideoCapture(1);
     if(!cap->isOpened())
         cap = new VideoCapture(1);
     capture = true;
@@ -33,11 +46,19 @@ MainWindow::MainWindow(QWidget *parent) :
     gray2ColorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
     destGray2ColorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
 
+    for (int i=0; i<NUMBER_ELEMENTS; i++){
+        QString name = "Object "+ QString::number(i+1);
+        ui->objectComboBox->addItem(name);
+        collection.add_empty_object();
+    }
+    colorList = rndColors();
+    load_collection(); //Load the existing collection at the start
     connect(&timer,SIGNAL(timeout()),this,SLOT(compute()));
     connect(ui->captureButton,SIGNAL(clicked(bool)),this,SLOT(start_stop_capture(bool)));
     connect(ui->colorButton,SIGNAL(clicked(bool)),this,SLOT(change_color_gray(bool)));
     connect(ui->addButton,SIGNAL(clicked(bool)),this,SLOT(add_to_collection()));
     connect(ui->delButton,SIGNAL(clicked(bool)),this,SLOT(delete_from_collection()));
+    connect(ui->saveButton,SIGNAL(clicked(bool)),this,SLOT(save_collection()));
     connect(visorS,SIGNAL(windowSelected(QPointF, int, int)),this,SLOT(selectWindow(QPointF, int, int)));
     connect(visorS,SIGNAL(pressEvent()),this,SLOT(deselectWindow()));
     timer.start(60);
@@ -65,16 +86,20 @@ void MainWindow::compute()
 
     }
 
-    if (ui->objectComboBox->currentIndex() == -1){ //CURRENT INDEX IS -1 WHEN EMPTY
-        ui->delButton->setEnabled(false);
-        ui->horizontalSlider->setEnabled(false);
-    }else{
+    if (!collection.isEmpty){
         detect_objects();
-        ui->delButton->setEnabled(true);
+        ui->saveButton->setEnabled(true);
         ui->horizontalSlider->setEnabled(true);
-        ui->horizontalSlider->setMaximum(collection.elementSize(ui->objectComboBox->currentIndex())-1);
-        show_object_image();
-    }
+        if (collection.element_size(ui->objectComboBox->currentIndex()) > 0)
+            ui->horizontalSlider->setMaximum(collection.element_size(ui->objectComboBox->currentIndex())-1);
+            show_object_image();
+    }else
+        ui->saveButton->setEnabled(false);
+
+    if(collection.element_size(ui->objectComboBox->currentIndex()) <= 0)
+        ui->delButton->setEnabled(false);
+    else
+        ui->delButton->setEnabled(true);
 
     if(showColorImage)
     {
@@ -131,30 +156,27 @@ void MainWindow::change_color_gray(bool color)
 void MainWindow::show_object_image(){
     //To make everything black again
     destGrayImage = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, CV_8UC1);
-    Mat image = collection.getImageFromElement(ui->objectComboBox->currentIndex(), ui->horizontalSlider->value());
-
-    Rect Roi((MAX_WIDTH-image.cols)/2, (MAX_HEIGHT-image.rows)/2, image.cols, image.rows);
-    image.copyTo(destGrayImage(Roi));
+    if (!collection.get_image_list()[ui->objectComboBox->currentIndex()].empty()){ //if the current object has images
+        Mat image = collection.get_image_from_element(ui->objectComboBox->currentIndex(), ui->horizontalSlider->value());
+        Rect Roi((MAX_WIDTH-image.cols)/2, (MAX_HEIGHT-image.rows)/2, image.cols, image.rows);
+        image.copyTo(destGrayImage(Roi));
+    }
 }
 
 void MainWindow::add_to_collection(){
-    qDebug("add collection");
     Mat selected_rect = grayImage(Rect(imageWindow.x,imageWindow.y,imageWindow.width,imageWindow.height));
     std::vector <cv::KeyPoint> keypoints;
     Mat image, descriptors;
     ULTRADETECTOR->detect(selected_rect, keypoints); //Getting keypoints of the frame
-    ULTRADETECTOR->compute(selected_rect, keypoints, descriptors); //Getting descriptors of the keypoints
-    selected_rect.copyTo(image);
-
-    if(!detect_frame(descriptors))//If it already exists in the collection
-        collection.addNewElement(image, descriptors);//Adding to the collection
-    else{
-        collection.addImageToElement(ui->objectComboBox->currentIndex(), selected_rect);
-        collection.addDescriptorsToElement(ui->objectComboBox->currentIndex(), descriptors);
-    }
-    train_matcher();
-    QString name = "Object "+ QString::number(collection.size());
-    ui->objectComboBox->addItem(name);
+    if (keypoints.size()> 0){ //We neither need an image with no keypoints, or it is useful.
+        ULTRADETECTOR->compute(selected_rect, keypoints, descriptors); //Getting descriptors of the keypoints
+        selected_rect.copyTo(image);
+        collection.add_image_to_element(ui->objectComboBox->currentIndex(), image, descriptors);
+        train_matcher();
+    }else
+        qDebug("Choose a surface with more difference between pixels.");
+    winSelected = false;
+    ui->addButton->setEnabled(false);
 }
 
 void MainWindow::train_matcher(){
@@ -165,15 +187,10 @@ void MainWindow::train_matcher(){
 }
 
 void MainWindow::delete_from_collection(){
-    qDebug("delete from collection");
-    qDebug() << "Deleting object with index " << ui->objectComboBox->currentIndex();
-}
-
-/*
- * Detects if the selected object exists already
- */
-bool MainWindow::detect_frame(cv::Mat descriptors){
-    return false;//Do the same as down there, but only with the rectangle.
+    if(collection.element_size(ui->objectComboBox->currentIndex()) > 0)
+        collection.del_image_from_element(ui->objectComboBox->currentIndex(), ui->horizontalSlider->value());
+        train_matcher();
+        destGrayImage = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, CV_8UC1);
 }
 
 void MainWindow::detect_objects(){
@@ -188,32 +205,62 @@ void MainWindow::detect_objects(){
 
     for (auto dmatch: matches){
         if (dmatch.distance < MAX_DISTANCE)
-            objectIdx[dmatch.imgIdx].push_back(dmatch.queryIdx);
+            objectIdx[collection.get_element_index(dmatch.imgIdx)].push_back(dmatch.queryIdx);
     }
+
     for (auto object: objectIdx){
         if (object.second.size() > 5){ //If more than 5 matches in this object
-            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
             std::vector<cv::Point2f> points;
-            for (auto point: object.second){
+            for (auto point: object.second)
                 points.push_back(keypoints[point].pt);
-                cv::drawMarker(grayImage, points.back(), color, MARKER_TILTED_CROSS, 5);
-                cv::drawMarker(colorImage, points.back(), color, MARKER_TILTED_CROSS, 5);
-            }
             cv::Rect rect = cv::boundingRect(points);
-            cv::rectangle(grayImage, rect, color);
-            cv::rectangle(colorImage, rect, color);
-            cv::putText(grayImage, "object "+std::to_string(object.first+1),(rect.br()+rect.tl())*0.5, FONT_HERSHEY_SIMPLEX, 0.5, color);
-            cv::putText(colorImage, "object "+std::to_string(object.first+1),(rect.br()+rect.tl())*0.5, FONT_HERSHEY_SIMPLEX, 0.5, color);
+            QColor color = colorList[object.first];
+            visorS->drawSquare(QPoint(rect.x+rect.width/2, rect.y+rect.height/2), rect.width, rect.height, color);
+            visorS->drawText(QPoint(rect.x+rect.width/2, rect.y+rect.height/2), QString("Object ")+QString::number(object.first), 11, color);
+            for (unsigned int x=0; x<points.size(); x++){
+                visorS->drawSquare(QPoint(points[x].x, points[x].y), CROSSHAIR_SIZE, CROSSHAIR_SIZE, color);
+            }
         }
     }
 }
 
 void MainWindow::save_collection(){
-    qDebug("Huehuehue");
+    qDebug("Saving collection");
+    remove("*.mat"); //Deletes all the last collection, if it ever existed
+    for (int i=0; i<collection.get_image_list().size(); i++){
+        for (int j=0; j<collection.get_image_list()[i].size(); j++){
+            cv::imwrite(std::to_string(i)+"_"+std::to_string(j)+".jpg", collection.get_image_from_element(i, j));
+        }
+    }
+    qDebug("Collection saved");
 }
 
 void MainWindow::load_collection(){
-    qDebug("Huehuehuheu");
+    qDebug("Trying to load collection");
+    DIR *d;
+    struct dirent *dir;
+    std::vector<std::string> dirlist;
+    d = opendir(".");
+    if (d){ //Gets all the files in the root dir
+        while ((dir = readdir(d)) != NULL)
+          dirlist.push_back(dir->d_name);
+    }
+    for (auto imagepath: dirlist){
+        int result = imagepath.find(".jpg"); //Check if the file is a .mat
+        if (result != -1){
+            int object_number = std::stoi(imagepath.substr(0, imagepath.find("_")));
+            if(object_number > (NUMBER_ELEMENTS-1)){
+                Mat image = imread(imagepath, IMREAD_COLOR); //Read the file
+                std::vector <cv::KeyPoint> keypoints;
+                Mat descriptors;
+                ULTRADETECTOR->detect(grayImage, keypoints); //Getting keypoints of the actual frame
+                ULTRADETECTOR->compute(grayImage, keypoints, descriptors); //Getting descriptors of the keypoints
+                collection.add_image_to_element(object_number, image, descriptors);
+            }else
+                qDebug("Some images were not loaded since they couldnt fit in the current collection");
+        }
+    }
+    qDebug("Collection loaded");
 }
 
 void MainWindow::selectWindow(QPointF p, int w, int h)
@@ -238,7 +285,6 @@ void MainWindow::selectWindow(QPointF p, int w, int h)
 
         winSelected = true;
         ui->addButton->setEnabled(true);
-
     }
 }
 

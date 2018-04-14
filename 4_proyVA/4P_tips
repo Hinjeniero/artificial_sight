@@ -11,3 +11,21 @@ Identificador de region es indice de la lista de regioes (con sus atributos).
 
 CV_32SC1, tipo de imgReg (La imgen de regiones intermedia entre gryaimage y destgrayimage)
 m.at<>(y-fila, x-columna)
+
+Canny(img, border, uMinimo, uMaximo)
+30-40 minimo, 100-120 maximo
+que supere el umbral minimo y conectado a otro borde o bienque supere el umbral maximo.
+Comprobar en la imagen de bordes que el punto inicial es el 0, que pertenece a un bando
+
+Calculo fronteras
+se dice que un pixel es frontera si uno de sus vecinoas pertenece a otra region.
+Hay que comprobar los puntos de borde, nmo hay porque coincidir.
+
+Una manera de analizar punto es, partimos del espacio de regiones, por cada punto(todos los de la imagen) comprobamos si es frontera.
+Se puede marcar como frontera si borde de imagen.
+AL encontrar punto, con su identificador de region, nos vamos a la lista de regiones, y añadimos las coordenadas del punto a la 
+lista de fronteras.
+
+
+Puede que tengamos -1's si un pounto no se ha añadido a ninguna region. Se debe comprobar, y con estos puntos poner un cero (negro), o solucionar estos
+casos.

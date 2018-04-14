@@ -31,6 +31,29 @@ public:
 private:
     Ui::MainWindow *ui;
     QTimer timer;
+    struct Region{
+        int id;
+        Point firstPoint;
+        int pointCount;
+        uchar grayLvl;
+        std::vector<Point> borders;
+
+        void setElements(int _id, Point _first, int _pointCount, uchar _grayLvl){
+            id = _id;
+            firstPoint = _first;
+            pointCount = _pointCount;
+            grayLvl = _grayLvl;
+        }
+
+        void incrementCount(){
+            pointCount++;
+        }
+
+        void addPointToBorder(Point p){
+            borders.push_back(p);
+        }
+    };
+    typedef struct Region Region;
 
     VideoCapture *cap;
     RCDraw *visorS, *visorD;

@@ -36,7 +36,6 @@ public:
     bool detect_frame(cv::Mat descriptors);
     void detect_objects();
     void train_matcher();
-    void save_collection();
     void load_collection();
     ~MainWindow();
 
@@ -53,41 +52,34 @@ private:
     Rect imageWindow;
     cv::Ptr<cv::ORB> ULTRADETECTOR = cv::ORB::create();
     cv::Ptr<cv::BFMatcher> ULTRAMATCHER = cv::BFMatcher::create(NORM_HAMMING);
-
+    std::vector <QColor> colorList;
     struct ObjectList{
-        std::vector<std::vector<cv::Mat>> mlist; //Second lvl vector, vector of images
-        std::vector<std::vector<cv::Mat>> dlist; //descriptors list
+        std::vector<std::vector<cv::Mat>> mlist; //Images list, inception. Second lvl vector, vector of images
+        std::vector<std::vector<cv::Mat>> dlist; //Descriptors list
         bool isEmpty = true;
 
-        void addNewElement(cv::Mat elementImage, cv::Mat elementDescriptors){
-            if (isEmpty)
-                isEmpty = false;
-            std::vector<cv::Mat> aux_image;
-            std::vector<cv::Mat> aux_desc;
-            aux_image.push_back(elementImage);
-            mlist.push_back(aux_image);
-            aux_desc.push_back(elementDescriptors);
-            dlist.push_back(aux_desc);
-        }
-
-        void addImageToElement(int indexElement, cv::Mat image){
+        void add_image_to_element(int indexElement, cv::Mat image, cv::Mat descriptors){
             mlist[indexElement].push_back(image);
-        }
-
-        void addDescriptorsToElement(int indexElement, cv::Mat descriptors){
             dlist[indexElement].push_back(descriptors);
+            isEmpty = false;
         }
 
-        void delImageFromElement(int indexElement, int indexImage){
-            mlist[indexElement].erase(mlist[indexElement].begin()+indexImage);
-            if (mlist[indexElement].size() <= 0){//If the object contains no more images
-                mlist.erase(mlist.begin()+indexElement); //We delete the object
-                if (mlist.size() <= 0) //IF the collection has no more objects
-                    isEmpty = true;
+        bool collection_is_empty(){
+            for (auto object: mlist){
+                if (object.size() > 0) //We check every std::vector containing the images of each object, everything contained within mlist
+                    return false;
             }
+            return true;
         }
 
-        cv::Mat getImageFromElement(int indexElement, int indexImage){
+        void del_image_from_element(int indexElement, int indexImage){
+            mlist[indexElement].erase(mlist[indexElement].begin()+indexImage);
+            dlist[indexElement].erase(dlist[indexElement].begin()+indexImage);
+            if (collection_is_empty()) //If the object contains no more images
+                isEmpty = true;
+        }
+
+        cv::Mat get_image_from_element(int indexElement, int indexImage){
             return mlist[indexElement][indexImage];
         }
 
@@ -95,16 +87,32 @@ private:
             return mlist.size();
         }
 
-        int elementSize(int indexElement){
+        int element_size(int indexElement){
             return mlist[indexElement].size();
         }
 
-        std::vector<std::vector<cv::Mat>> get_object_list(){
+        void add_empty_object(){
+            std::vector<cv::Mat> emptyM;
+            std::vector<cv::Mat> emptyD;
+            mlist.push_back(emptyM);
+            dlist.push_back(emptyD);
+        }
+
+        std::vector<std::vector<cv::Mat>> get_image_list(){
             return mlist;
         }
 
         std::vector<std::vector<cv::Mat>> get_descriptors_list(){
             return dlist;
+        }
+
+        int get_element_index(int indexImage){
+            for (int i=0; i<mlist.size();i++){
+                indexImage -= mlist[i].size();
+                if (indexImage < 0)
+                    return i+1;
+            }
+        return -1;
         }
     };
     typedef struct ObjectList ObjectList;
@@ -118,6 +126,7 @@ public slots:
 
     void add_to_collection();
     void delete_from_collection();
+    void save_collection();
 
     void selectWindow(QPointF p, int w, int h);
     void deselectWindow();
