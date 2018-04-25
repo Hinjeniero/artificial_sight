@@ -59,10 +59,15 @@ private:
     };
     typedef struct Region Region;
 
+    struct Corner{
+        Point p;
+        //Disparity whatever;
+    };
+
     VideoCapture *cap;
-    RCDraw *visorS, *visorD;
-    QImage *imgS, *imgD;
-    Mat colorImage, grayImage, destColorImage, destGrayImage;
+    RCDraw *visorS, *visorD, *visorS_D, *visorD_D;
+    QImage *imgS, *imgD, *imgS_D, *imgD_D;
+    Mat colorImage, colorImage_2, grayImage, grayImage_2, destColorImage, destGrayImage;
     Mat gray2ColorImage, destGray2ColorImage;
     bool capture, showColorImage, winSelected;
     Rect imageWindow;
@@ -70,13 +75,9 @@ private:
 
 public slots:
     void compute();
-    void start_stop_capture(bool start);
     void load_from_file();
     void change_color_gray(bool color);
     void analyzeAllRegions();
-    void drawRegionsImage(std::map<int, Region> regions, Mat imgReg);
-    std::vector<Point> getBordersImage(Mat imgReg);
-    void drawBordersImage(std::vector<Point> borders);
     void analyzeRegion(Point pStart, Mat &imgReg, Region region, Mat &analyzed); //TODO gray level is the mean of all the pixels!
     void selectWindow(QPointF p, int w, int h);
     void deselectWindow();

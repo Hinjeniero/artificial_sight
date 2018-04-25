@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>860</width>
-    <height>282</height>
+    <height>299</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -147,8 +147,14 @@
      <x>770</x>
      <y>250</y>
      <width>55</width>
-     <height>23</height>
+     <height>41</height>
     </rect>
+   </property>
+   <property name="cursor">
+    <cursorShape>IBeamCursor</cursorShape>
+   </property>
+   <property name="mouseTracking">
+    <bool>false</bool>
    </property>
    <property name="maximum">
     <number>255</number>

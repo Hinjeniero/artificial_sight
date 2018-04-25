@@ -5,6 +5,7 @@
 #define MAX_HEIGHT 240
 #define MAX_WIDTH 320
 #define CROSSHAIR_SIZE 1
+//std::sort, ordenar std::vector
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -12,18 +13,17 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    cap = new VideoCapture(0);
-    if(!cap->isOpened())
-        cap = new VideoCapture(1);
-    capture = true;
     showColorImage = false;
-    winSelected = false;
-    cap->set(CV_CAP_PROP_FRAME_WIDTH, MAX_WIDTH);
-    cap->set(CV_CAP_PROP_FRAME_HEIGHT, MAX_HEIGHT);
+
     imgS = new QImage(MAX_WIDTH,MAX_HEIGHT, QImage::Format_RGB888);
     visorS = new RCDraw(MAX_WIDTH,MAX_HEIGHT, imgS, ui->imageFrameS);
     imgD = new QImage(MAX_WIDTH,MAX_HEIGHT, QImage::Format_RGB888);
     visorD = new RCDraw(MAX_WIDTH,MAX_HEIGHT, imgD, ui->imageFrameD);
+
+    imgS_D = new QImage(MAX_WIDTH,MAX_HEIGHT, QImage::Format_RGB888);
+    visorS_D = new RCDraw(MAX_WIDTH,MAX_HEIGHT, imgS_D, ui->imageFrameS);
+    imgD_D = new QImage(MAX_WIDTH,MAX_HEIGHT, QImage::Format_RGB888);
+    visorD_D = new RCDraw(MAX_WIDTH,MAX_HEIGHT, imgD_D, ui->imageFrameD);
 
     colorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
     grayImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC1);
@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
     destGray2ColorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
 
     connect(&timer,SIGNAL(timeout()),this,SLOT(compute()));
-    connect(ui->captureButton,SIGNAL(clicked(bool)),this,SLOT(start_stop_capture(bool)));
+    //connect(ui->captureButton,SIGNAL(clicked(bool)),this,SLOT(start_stop_capture(bool)));
     connect(ui->colorButton,SIGNAL(clicked(bool)),this,SLOT(change_color_gray(bool)));
     connect(ui->loadButton,SIGNAL(clicked(bool)),this,SLOT(load_from_file()));
     connect(visorS,SIGNAL(windowSelected(QPointF, int, int)),this,SLOT(selectWindow(QPointF, int, int)));
@@ -49,60 +49,34 @@ MainWindow::~MainWindow()
     delete cap;
     delete visorS;
     delete visorD;
+    delete visorS_D;
+    delete visorD_D;
     delete imgS;
     delete imgD;
-
+    delete imgS_D;
+    delete imgD_D;
 }
 
 void MainWindow::compute()
 {
 
-    if(capture && cap->isOpened())
-    {
-        *cap >> colorImage;
-
-        cvtColor(colorImage, grayImage, CV_BGR2GRAY);
-        cvtColor(colorImage, colorImage, CV_BGR2RGB);
-
-    }
-
     analyzeAllRegions();
 
-    if(showColorImage)
-    {
+    if(showColorImage){
         memcpy(imgS->bits(), colorImage.data , 320*240*3*sizeof(uchar));
-        memcpy(imgD->bits(), destColorImage.data , 320*240*3*sizeof(uchar));
+        //memcpy(imgD->bits(), destColorImage.data , 320*240*3*sizeof(uchar));
+        memcpy(imgD->bits(), colorImage_2.data , 320*240*3*sizeof(uchar));
     }
-    else
-    {
-        cvtColor(grayImage,gray2ColorImage, CV_GRAY2RGB);
+    else{
+        cvtColor(grayImage, gray2ColorImage, CV_GRAY2RGB);
+        //cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
         cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
         memcpy(imgS->bits(), gray2ColorImage.data , 320*240*3*sizeof(uchar));
         memcpy(imgD->bits(), destGray2ColorImage.data , 320*240*3*sizeof(uchar));
-
     }
 
-    if(winSelected)
-    {
-        visorS->drawSquare(QPointF(imageWindow.x+imageWindow.width/2, imageWindow.y+imageWindow.height/2), imageWindow.width,imageWindow.height, Qt::green );
-    }
     visorS->update();
     visorD->update();
-
-}
-
-void MainWindow::start_stop_capture(bool start)
-{
-    if(start)
-    {
-        ui->captureButton->setText("Stop capture");
-        capture = true;
-    }
-    else
-    {
-        ui->captureButton->setText("Start capture");
-        capture = false;
-    }
 }
 
 void MainWindow::change_color_gray(bool color)
@@ -148,9 +122,6 @@ void MainWindow::analyzeAllRegions(){
             }
         }
     }
-    drawRegionsImage(allRegions, imgReg);
-    if (ui->drawBorderCheck->isChecked())
-        drawBordersImage(getBordersImage(imgReg));
 }
 
 /*
@@ -186,77 +157,44 @@ void MainWindow::analyzeRegion(Point pStart, Mat &imgReg, Region region, Mat &an
 }
 
 /*
- * Draws the regions in the right panel
- */
-void MainWindow::drawRegionsImage(std::map<int, Region> regions, Mat imgReg){
-    for (int i=0; i<imgReg.rows; i++){
-        for (int j=0; j<imgReg.cols; j++){
-            destGrayImage.at<uchar>(i, j) = regions[imgReg.at<int>(i, j)].grayLvl;
-        }
-    }
-}
-
-
-/*
- * Returns a list with all the points that are a border of some kind (That have neighbour of another region)
- */
-std::vector<Point> MainWindow::getBordersImage(Mat imgReg){
-    int currentRegion;
-    std::vector<Point> borders;
-    for (int i=0; i<imgReg.rows; i++){
-        for (int j=0; j<imgReg.cols; j++){
-            currentRegion = imgReg.at<int>(i, j);
-            //CHecking the 4 direct neighbours
-            if (i>0 && (imgReg.at<int>(i-1, j) != currentRegion))
-                borders.push_back(Point(i-1, j));
-            if (i<MAX_WIDTH-1 && (imgReg.at<int>(i+1, j) != currentRegion))
-                borders.push_back(Point(i+1, j));
-            if (j>0 && (imgReg.at<int>(i, j-1) != currentRegion))
-                borders.push_back(Point(i, j-1));
-            if (j<MAX_HEIGHT-1 && (imgReg.at<int>(i, j+1) != currentRegion))
-                borders.push_back(Point(i, j+1));
-        }
-    }
-    return borders;
-}
-
-/*
- * Draw the points of the borders parameter in a green color
- */
-void MainWindow::drawBordersImage(std::vector<Point> borders){
-    for (unsigned int i=0; i<borders.size(); i++){
-        visorD->drawSquare(QPoint(borders[i].y, borders[i].x), CROSSHAIR_SIZE, CROSSHAIR_SIZE, Qt::green);
-    }
-}
-
-/*
- * Load a file from the local disk to work on it
+ * Load two files from the local disk to work on them
  */
 void MainWindow::load_from_file(){
     ui->loadButton->setText("Selecting file");
-    QString imagepath =  QFileDialog::getOpenFileName(this,"Load image", QDir::currentPath(),
+    QFileDialog dialog(this);
+    dialog.setDirectory(QDir::currentPath());
+    dialog.setFileMode(QFileDialog::ExistingFile);
+
+    QStringList imagepaths =  dialog.getOpenFileNames(this, "Load images", QDir::currentPath(),
           "Image files (*.jpg *.jpeg *.bmp *.png) ;; All files (*.*)");
-    if(!imagepath.isNull()){
-        qDebug() << "selected file path: " << imagepath.toUtf8();
-        if (capture){
-            ui->captureButton->setChecked(false);
-            capture = false;
+    if (imagepaths.size() > 1){ //If it's 2 or more, we will only use the first 2 tho
+        qDebug("Selected files: ");
+        for (auto imagepath: imagepaths){
+            qDebug() << imagepath.toUtf8();
         }
-        Mat auxImage = imread(imagepath.toUtf8().constData(), IMREAD_COLOR); // Read the file
+
+        Mat auxImage = imread(imagepaths[0].toUtf8().constData(), IMREAD_COLOR); // Read the first file
+        Mat auxImage_2 = imread(imagepaths[1].toUtf8().constData(), IMREAD_COLOR); // Read the second file
+
         cvtColor(auxImage,colorImage, CV_RGB2BGR);
         cv::resize(colorImage, auxImage, Size(MAX_WIDTH, MAX_HEIGHT));
         auxImage.copyTo(colorImage);
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
 
         if(colorImage.empty())//invalid input
-           qDebug("Could not open or find the image");
-    }
-    ui->loadButton->setText("Load file");
-    ui->loadButton->setChecked(false);
-    ui->captureButton->setText("Start capture");
-    ui->captureButton->setChecked(false);
-    capture = false;
+           qDebug() << "Could not open or find " << imagepaths[0];
 
+        cvtColor(auxImage_2, colorImage_2, CV_RGB2BGR);
+        cv::resize(colorImage_2, auxImage_2, Size(MAX_WIDTH, MAX_HEIGHT));
+        auxImage.copyTo(colorImage_2);
+        cvtColor(colorImage_2, grayImage_2, CV_BGR2GRAY);
+
+        if(colorImage_2.empty())//invalid input
+           qDebug() << "Could not open or find " << imagepaths[1];
+
+    }
+    ui->loadButton->setText("Load Images");
+    ui->loadButton->setChecked(false);
 }
 
 void MainWindow::selectWindow(QPointF p, int w, int h)

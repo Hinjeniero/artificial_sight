@@ -1,0 +1,5 @@
+comprobamos distancia todos con todos, ordenamos y el de en medio de los arrays, el menor es nuestro punto de referencia.
+a partir de punto de referencia, calculamos la dispersion
+para añadir cada nuevo punto comparamos distancia maxima con la nueva.
+
+PD: Loadear ficheros 

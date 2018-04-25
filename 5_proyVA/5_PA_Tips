@@ -1,0 +1,28 @@
+Deteccion esquinas:
+	funcion cornerharris, devuelve imagenes con las respuestas al filtro de harris. Imagen de floats. CV_32FC1.
+	Parametros:
+		blockSize -> Cuantificar el grado de esquina de un punto se ve el tamaño del entorno del punto (3x3, 5x5) cuadrados
+		kSize -> FIltro de gradiente, tamaño del filtro de shovel (3x3, 5x5...)
+		k -> 0,04 -> 0,1, mejor 0,04
+	consideramos que punto es esquina si valor harris es superior a umbral (10⁻⁶). Harris da valores bajos
+	Disparidad en un sentido, de izquierda a derecha
+	Esquinas de harris en imagen izquierda, y calculamos punto homologo de cada esquina en imagen de la derecha.
+	Disparidad, division produce decimales, se debe representar con un tipo float (cv_32fc1). Disparidad negativa no tiene sentido.
+	Foto.
+	
+	En fase inicial de disparidad, disparidad de todas las regiones. Tambien tenemos que calcular media de disparidad. Otro atributo en lista de regiones	
+	que sea la media de disparidad. SI region no tiene esquinas asignamos disparidad 0. Y numero de esquinas de region.
+
+Tras esquinas, esquinas homologas. Buscar en la misma linea de imagen, esta rectificada. Tenemos que definirnos imagen centrada en el punto, que sera el parche de imagen que usaremos
+ para comprobar la esquina homologa. Tamaño de ventana del estilo 11x11. Se compara parche de imagen con linea de puntos homologa.
+Esto lo have matchTemplate, funcion de opencv, no tenemos que hacerlo a mano.
+
+Tenemos que definirnos esas ventanas de imagenes y pasarlas por parametro.
+Hay que decir como comparar imagenes. Hay que usar templatematchmode: TM_CCOEFF_NORMED -> valor en rango -1 -> 1. 
+-1 distintas a tope, 1 idénticas. Para decir que son iguales, un valor del orden de 0,9 o mayor estaría bien.
+Cada parche se compara con cada parche posible de la linea homologa.
+Mat que se nos devuelve es 320-W * 1 fila
+
+Funcion opencv: minmaxloc nos devuelve minimo y maximo de la imagen, y sus posiciones.
+Una vez calculada la disparidad, tenemos que marcar el punto como fijo poniendo un 1 en la imagen de fijos, y almacenamos el punto de disparidad en esas coordenadas.
+
