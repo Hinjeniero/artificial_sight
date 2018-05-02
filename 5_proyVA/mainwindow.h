@@ -67,14 +67,16 @@ private:
     VideoCapture *cap;
     RCDraw *visorS, *visorD, *visorS_D, *visorD_D;
     QImage *imgS, *imgD, *imgS_D, *imgD_D;
-    Mat colorImage, colorImage_2, grayImage, grayImage_2, destColorImage, destGrayImage;
-    Mat gray2ColorImage, destGray2ColorImage;
+    Mat colorImage, colorImage_2, grayImage, grayImage_2, destColorImage, destColorImage_2, destGrayImage, destGrayImage_2;
+    Mat gray2ColorImage, destGray2ColorImage, gray2ColorImage_2, destGray2ColorImage_2;
     bool capture, showColorImage, winSelected;
     Rect imageWindow;
 
 
 public slots:
     void compute();
+    Mat getCorners(Mat srcImage);
+    Mat analyzeCorners(Mat corners);
     void load_from_file();
     void change_color_gray(bool color);
     void analyzeAllRegions();

@@ -5,6 +5,11 @@
 #define MAX_HEIGHT 240
 #define MAX_WIDTH 320
 #define CROSSHAIR_SIZE 1
+#define BLOCKSIZE 5
+#define K_VALUE 0.04
+#define HARRIS_THRESHOLD 0.000001
+#define WIDTH_VALUE 11
+#define LOC_THRESHOLD 0.8
 //std::sort, ordenar std::vector
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -26,14 +31,24 @@ MainWindow::MainWindow(QWidget *parent) :
     visorD_D = new RCDraw(MAX_WIDTH,MAX_HEIGHT, imgD_D, ui->imageFrameD);
 
     colorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+    colorImage_2.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+
     grayImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC1);
+    grayImage_2.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC1);
+
     destColorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+    destColorImage_2.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+
     destGrayImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC1);
+    destGrayImage_2.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC1);
+
     gray2ColorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+    gray2ColorImage_2.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+
     destGray2ColorImage.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
+    destGray2ColorImage_2.create(MAX_HEIGHT,MAX_WIDTH,CV_8UC3);
 
     connect(&timer,SIGNAL(timeout()),this,SLOT(compute()));
-    //connect(ui->captureButton,SIGNAL(clicked(bool)),this,SLOT(start_stop_capture(bool)));
     connect(ui->colorButton,SIGNAL(clicked(bool)),this,SLOT(change_color_gray(bool)));
     connect(ui->loadButton,SIGNAL(clicked(bool)),this,SLOT(load_from_file()));
     connect(visorS,SIGNAL(windowSelected(QPointF, int, int)),this,SLOT(selectWindow(QPointF, int, int)));
@@ -64,19 +79,27 @@ void MainWindow::compute()
 
     if(showColorImage){
         memcpy(imgS->bits(), colorImage.data , 320*240*3*sizeof(uchar));
-        //memcpy(imgD->bits(), destColorImage.data , 320*240*3*sizeof(uchar));
         memcpy(imgD->bits(), colorImage_2.data , 320*240*3*sizeof(uchar));
+
+        memcpy(imgS_D->bits(), destColorImage.data , 320*240*3*sizeof(uchar));
+        memcpy(imgD_D->bits(), destColorImage_2.data , 320*240*3*sizeof(uchar));
     }
     else{
         cvtColor(grayImage, gray2ColorImage, CV_GRAY2RGB);
-        //cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
+        cvtColor(grayImage_2, gray2ColorImage_2, CV_GRAY2RGB);
         cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
+        cvtColor(destGrayImage_2,destGray2ColorImage_2, CV_GRAY2RGB);
         memcpy(imgS->bits(), gray2ColorImage.data , 320*240*3*sizeof(uchar));
-        memcpy(imgD->bits(), destGray2ColorImage.data , 320*240*3*sizeof(uchar));
+        memcpy(imgD->bits(), gray2ColorImage_2.data , 320*240*3*sizeof(uchar));
+
+        memcpy(imgS_D->bits(), destGray2ColorImage.data , 320*240*3*sizeof(uchar));
+        memcpy(imgD_D->bits(), destGray2ColorImage_2.data , 320*240*3*sizeof(uchar));
     }
 
     visorS->update();
     visorD->update();
+    visorS_D->update();
+    visorD_D->update();
 }
 
 void MainWindow::change_color_gray(bool color)
@@ -154,6 +177,41 @@ void MainWindow::analyzeRegion(Point pStart, Mat &imgReg, Region region, Mat &an
         i++;
     }
     list.clear(); //Freeing the space that the list reserved
+}
+
+/*
+ *  Get all the corners detected by the harris filter, accodring to the defined values
+ */
+Mat MainWindow::getCorners(Mat srcImage){
+    Mat outImage;
+    Mat corners = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, CV_8UC1);
+    cv::cornerHarris(srcImage, outImage, BLOCKSIZE, BLOCKSIZE, K_VALUE);
+    for (int i = 0; i<outImage.rows; i++){
+        for (int j=0; j<outImage.cols; j++){
+            if(outImage.at<float>(i, j) > HARRIS_THRESHOLD)
+                corners.at<uchar>(i, j) = 1;
+        }
+    }
+    return corners;
+}
+
+Mat MainWindow::analyzeCorners(Mat corners){
+    Mat counterparts = Mat::zeros(MAX_HEIGHT, MAX_WIDTH, CV_8UC1);
+    Mat result = Mat::zeros(1, MAX_WIDTH, CV_32FC1);
+    int half_width = WIDTH_VALUE/2;
+    for (int i=0; i<corners.rows; i++){
+        for (int j=0; j<corners.cols; j++){
+            if (i > half_width && j > half_width)
+                Mat rect = grayImage(Rect(i-half_width, j-half_width, WIDTH_VALUE, WIDTH_VALUE));
+                Mat tmpl = grayImage_2(Rect(i-half_width, 0, WIDTH_VALUE, MAX_WIDTH)); //TODO Crop the row so we dont have to compute so much.
+                cv::matchTemplate(tmpl, rect, result, TM_CCOEFF_NORMED); //Return a row with the values in our case
+                Point maxIndex;
+                cv::minMaxLoc(result, NULL, NULL, NULL, maxIndex); //Checking which position of the window was the best
+                if(result.at<float>(maxIndex.x, maxIndex.y) > LOC_THRESHOLD)
+                    counterparts.at<uchar>(i, j) = 1;
+        }
+    }
+    return counterparts;
 }
 
 /*
