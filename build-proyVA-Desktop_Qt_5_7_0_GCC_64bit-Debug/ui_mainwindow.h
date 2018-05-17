@@ -42,6 +42,9 @@ public:
     QLabel *label;
     QLabel *label_2;
     QSpinBox *grayDifferenceBox;
+    QSpinBox *vicinitySizeBox;
+    QLabel *label_3;
+    QLabel *label_4;
 
     void setupUi(QWidget *MainWindow)
     {
@@ -71,7 +74,7 @@ public:
         loadButton->setChecked(false);
         showCornersCheck = new QCheckBox(MainWindow);
         showCornersCheck->setObjectName(QStringLiteral("showCornersCheck"));
-        showCornersCheck->setGeometry(QRect(720, 220, 111, 20));
+        showCornersCheck->setGeometry(QRect(750, 30, 111, 20));
         initDispButton = new QPushButton(MainWindow);
         initDispButton->setObjectName(QStringLiteral("initDispButton"));
         initDispButton->setGeometry(QRect(740, 140, 131, 31));
@@ -94,24 +97,38 @@ public:
         imageFrameD_Down->setFrameShadow(QFrame::Raised);
         loadGroundButton = new QPushButton(MainWindow);
         loadGroundButton->setObjectName(QStringLiteral("loadGroundButton"));
-        loadGroundButton->setGeometry(QRect(740, 310, 131, 31));
+        loadGroundButton->setGeometry(QRect(740, 350, 131, 31));
         loadGroundButton->setCheckable(true);
         loadGroundButton->setChecked(false);
         estDispLcd = new QLCDNumber(MainWindow);
         estDispLcd->setObjectName(QStringLiteral("estDispLcd"));
-        estDispLcd->setGeometry(QRect(740, 390, 131, 31));
+        estDispLcd->setGeometry(QRect(740, 410, 131, 31));
         trueDispLcd = new QLCDNumber(MainWindow);
         trueDispLcd->setObjectName(QStringLiteral("trueDispLcd"));
         trueDispLcd->setGeometry(QRect(740, 470, 131, 31));
         label = new QLabel(MainWindow);
         label->setObjectName(QStringLiteral("label"));
-        label->setGeometry(QRect(740, 360, 131, 31));
+        label->setGeometry(QRect(740, 380, 131, 41));
         label_2 = new QLabel(MainWindow);
         label_2->setObjectName(QStringLiteral("label_2"));
-        label_2->setGeometry(QRect(750, 440, 101, 31));
+        label_2->setGeometry(QRect(750, 440, 101, 41));
         grayDifferenceBox = new QSpinBox(MainWindow);
         grayDifferenceBox->setObjectName(QStringLiteral("grayDifferenceBox"));
-        grayDifferenceBox->setGeometry(QRect(840, 220, 47, 31));
+        grayDifferenceBox->setGeometry(QRect(830, 230, 41, 31));
+        vicinitySizeBox = new QSpinBox(MainWindow);
+        vicinitySizeBox->setObjectName(QStringLiteral("vicinitySizeBox"));
+        vicinitySizeBox->setGeometry(QRect(830, 280, 41, 31));
+        label_3 = new QLabel(MainWindow);
+        label_3->setObjectName(QStringLiteral("label_3"));
+        label_3->setGeometry(QRect(750, 223, 81, 51));
+        label_3->setAlignment(Qt::AlignCenter);
+        label_3->setWordWrap(true);
+        label_4 = new QLabel(MainWindow);
+        label_4->setObjectName(QStringLiteral("label_4"));
+        label_4->setGeometry(QRect(750, 270, 81, 51));
+        label_4->setLineWidth(1);
+        label_4->setAlignment(Qt::AlignCenter);
+        label_4->setWordWrap(true);
 
         retranslateUi(MainWindow);
 
@@ -129,6 +146,8 @@ public:
         loadGroundButton->setText(QApplication::translate("MainWindow", "Load Ground Truth", 0));
         label->setText(QApplication::translate("MainWindow", "  Estimated disparity", 0));
         label_2->setText(QApplication::translate("MainWindow", "    True disparity", 0));
+        label_3->setText(QApplication::translate("MainWindow", "Gray difference", 0));
+        label_4->setText(QApplication::translate("MainWindow", "Propagation vicinity size", 0));
     } // retranslateUi
 
 };
